@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "siribridge"
+version = "0.1.0"
+description = "Bidirectional CUA-to-Siri interface: ask the real macOS Siri from a CLI or MCP server and capture the response."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "admin" }]
+keywords = ["siri", "macos", "accessibility", "mcp", "agent", "automation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS",
+    "Topic :: System :: Shells",
+]
+dependencies = [
+    "pyobjc-framework-ApplicationServices>=9.0",
+    "pyobjc-framework-Vision>=9.0",
+    "click>=8.0",
+    "mcp>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-mock>=3.0",
+    "mcp[cli]",
+]
+
+[project.scripts]
+siri = "siribridge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
