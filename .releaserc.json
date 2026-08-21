@@ -21,6 +21,7 @@
       {
         "assets": [
           "pyproject.toml",
+          "src/siri_cli/__init__.py",
           "Formula/siri-cli.rb",
           "CHANGELOG.md"
         ],

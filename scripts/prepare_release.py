@@ -31,12 +31,29 @@ def bump_pyproject(new_version: str) -> None:
     print(f"pyproject.toml version -> {new_version}")
 
 
+def bump_version_init(new_version: str) -> None:
+    """Bump __version__ in src/siri_cli/__init__.py so `siri --version`
+    reports the released version instead of a stale hardcoded value."""
+    path = ROOT / "src" / "siri_cli" / "__init__.py"
+    text = path.read_text()
+    new_text, n = re.subn(
+        r'(?m)^(__version__\s*=\s*)"[^"]+"',
+        rf'\1"{new_version}"',
+        text,
+    )
+    if n != 1:
+        raise RuntimeError(f"Expected exactly 1 __version__ in {path}, found {n}")
+    path.write_text(new_text)
+    print(f"__init__.py __version__ -> {new_version}")
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print("usage: prepare_release.py <new_version>", file=sys.stderr)
         return 1
     new_version = sys.argv[1].lstrip("v")
     bump_pyproject(new_version)
+    bump_version_init(new_version)
     return 0
 
 
