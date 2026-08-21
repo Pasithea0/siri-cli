@@ -281,10 +281,6 @@ siri "what time is it"
 
 ### Roadmap
 
-- [x] macOS 27 Siri AI backend with response capture
-- [x] Bare `siri "query"` CLI
-- [x] Homebrew formula (`Formula/siri-cli.rb`) exposing `siri` on PATH
-- [ ] Publish GitHub release (fill formula URL/sha256) + `brew tap`
 - [ ] macOS 27 rich-card image capture (OCR / screenshot region)
 
 ---
