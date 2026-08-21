@@ -92,3 +92,27 @@ def test_ask_returns_response_with_injected_text(monkeypatch):
     assert resp.backend == "typetosiri"
     assert resp.capture_mode == "ax"
     assert resp.elapsed_ms >= 0
+
+
+def test_extract_falls_back_to_ocr_when_ax_empty(monkeypatch):
+    """When AX returns nothing, the OCR path is used."""
+    backend = typetosiri.TypeToSiriBackend()
+
+    # Simulate: no Siri pid found (AX path skipped entirely) -> OCR used.
+    monkeypatch.setattr(typetosiri.TypeToSiriBackend, "_find_siri_pid", lambda self: None)
+    monkeypatch.setattr(
+        typetosiri.TypeToSiriBackend, "_extract_response_text_ocr", lambda self: "It is 4 PM"
+    )
+    assert backend._extract_response_text() == "It is 4 PM"
+
+
+def test_extract_uses_ax_when_text_present(monkeypatch):
+    backend = typetosiri.TypeToSiriBackend()
+    monkeypatch.setattr(typetosiri.TypeToSiriBackend, "_find_siri_pid", lambda self: 999)
+    monkeypatch.setattr(
+        typetosiri.ax, "extract_texts", lambda app_ref: ["AX answer"]
+    )
+    monkeypatch.setattr(
+        typetosiri.TypeToSiriBackend, "_extract_response_text_ocr", lambda self: "OCR answer"
+    )
+    assert backend._extract_response_text() == "AX answer"

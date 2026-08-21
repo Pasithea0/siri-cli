@@ -22,6 +22,7 @@ from typing import Callable, Optional
 from . import base
 from .. import config
 from ..capture import ax
+from ..capture import ocr
 
 # Type-to-Siri default hotkey. Fn maps to a "globe"/Fn keycode in CGEvent
 # terms; the prefs read earlier showed the Fn+Space shortcut.
@@ -142,16 +143,36 @@ class TypeToSiriBackend(base.BridgeBackend):
     # -- capture path -----------------------------------------------------
 
     def _extract_response_text(self) -> Optional[str]:
-        """Read the current response text from the Siri process's AX tree."""
+        """Read the current response text from the Siri overlay.
+
+        On macOS 26 the SiriNCService AX tree is empty, so we first try the
+        AX tree (macOS 27 Siri app) then fall back to screen-region OCR of
+        the overlay area.
+        """
+        # 1) Try AX (works on surfaces that expose an AX tree).
         pid = self._find_siri_pid()
-        if pid is None:
-            return None
-        app_ref = ax.app_for_pid(pid)
-        texts = ax.extract_texts(app_ref)
-        if not texts:
-            return None
-        # Join all text; the caller's settle-detector dedups identical polls.
-        return "\n".join(texts)
+        if pid is not None:
+            app_ref = ax.app_for_pid(pid)
+            texts = ax.extract_texts(app_ref)
+            if texts:
+                return "\n".join(texts)
+
+        # 2) Fall back to OCR of the top-left overlay region.
+        return self._extract_response_text_ocr()
+
+    def _extract_response_text_ocr(self) -> Optional[str]:
+        """OCR the screen region where the Siri overlay renders.
+
+        The Type-to-Siri prompt renders near the top of the screen. We scan
+        the top band; on macOS 27 (Siri app) this may need a different
+        region, which is configurable.
+        """
+        # Overlay region: top-left band of the display.
+        w, h = ocr.screen_size()
+        # The prompt is a relatively small centered box near the top; scan
+        # the top 45% of the screen for text.
+        region_h = int(h * 0.45)
+        return ocr.extract_text_from_region(0, 0, w, region_h)
 
     @staticmethod
     def _find_siri_pid() -> Optional[int]:
