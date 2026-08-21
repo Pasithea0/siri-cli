@@ -37,21 +37,25 @@ def fetch_tarball_sha256(version: str) -> str:
 def update_formula(version: str, sha: str) -> None:
     path = ROOT / "Formula" / "siri-cli.rb"
     text = path.read_text()
+    # Anchor to the TOP-LEVEL formula fields (2-space indent). The resource
+    # blocks also contain url/sha256 but at 4-space indent — must not touch
+    # those. (Resource urls point at pythonhosted.org, so the github.com url
+    # regex is already unique, but the sha256 regex needs the 2-space anchor.)
     new_text, n = re.subn(
-        r'url "https://github\.com/[^"]+?"',
-        f'url "https://github.com/{ORG}/{REPO}/archive/refs/tags/v{version}.tar.gz"',
+        r'(?m)^  url "https://github\.com/[^"]+?"',
+        f'  url "https://github.com/{ORG}/{REPO}/archive/refs/tags/v{version}.tar.gz"',
         text,
     )
     if n != 1:
-        raise SystemExit(f"Expected exactly 1 url line in formula, found {n}")
+        raise SystemExit(f"Expected exactly 1 top-level url line in formula, found {n}")
     text = new_text
     new_text, n = re.subn(
-        r'sha256 "[0-9a-f]{64}"',
-        f'sha256 "{sha}"',
+        r'(?m)^  sha256 "[0-9a-f]{64}"',
+        f'  sha256 "{sha}"',
         text,
     )
     if n != 1:
-        raise SystemExit(f"Expected exactly 1 sha256 line in formula, found {n}")
+        raise SystemExit(f"Expected exactly 1 top-level sha256 line in formula, found {n}")
     path.write_text(new_text)
     print(f"formula updated: url v{version}, sha256 {sha[:12]}…")
 

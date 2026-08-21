@@ -11,8 +11,8 @@ class SiriCli < Formula
 
   desc "Ask the real macOS Siri from the terminal and read back its response"
   homepage "https://github.com/Pasithea0/siri-cli"
-  url "https://github.com/Pasithea0/siri-cli/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "2d3d59a9eab83da2f8e9d0b24ad4b5624640cbdb26df9315d30a79340188a035"
+  url "https://github.com/Pasithea0/siri-cli/archive/refs/tags/v1.0.1.tar.gz"
+  sha256 "8f838d0b807748947081952f153d6094ce93f05ce58e64cd353514b51961e2f9"
   license "MIT"
 
   # Requires macOS 27 (Tahoe) for the new "Siri AI" app; the macOS 26 overlay
