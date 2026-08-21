@@ -16,8 +16,8 @@ class SiriCli < Formula
   homepage "https://github.com/Pasithea0/siri-cli"
   # The URL/sha256 are filled by the release workflow (semantic-release)
   # via @semantic-release/exec after tagging. Template below:
-  url "https://github.com/Pasithea0/siri-cli/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "9892aa5e679caf326b847e3ba77ac42724e880977f58d9c648c111ff065d5e4b"
+  url "https://github.com/Pasithea0/siri-cli/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
 
   # Requires macOS 27 (Tahoe) for the new "Siri AI" app; the macOS 26 overlay
