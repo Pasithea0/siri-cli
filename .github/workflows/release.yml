@@ -80,10 +80,12 @@ jobs:
         # Mirror the updated formula into the official tap repo so
         # `brew tap Pasithea0/homebrew-siri-cli && brew install siri-cli`
         # pulls the release-correct formula.
+        # Uses a fine-grained PAT (secret TAP_PAT) that has write access to
+        # BOTH repos, since secrets.GITHUB_TOKEN is scoped to this repo only.
         if: ${{ ! inputs.dry_run }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_REPO: Pasithea0/homebrew-siri-cli
+          TAP_PAT: ${{ secrets.TAP_PAT }}
         run: |
           set -e
           VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
@@ -91,8 +93,12 @@ jobs:
             echo "no tag; skipping tap sync"
             exit 0
           fi
+          if [ -z "$TAP_PAT" ]; then
+            echo "TAP_PAT secret not set; skipping tap sync (formula stays in source repo)"
+            exit 0
+          fi
           rm -rf /tmp/tap-sync
-          git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/${TAP_REPO}.git" /tmp/tap-sync
+          git clone --depth 1 "https://x-access-token:${TAP_PAT}@github.com/${TAP_REPO}.git" /tmp/tap-sync
           cp Formula/siri-cli.rb /tmp/tap-sync/Formula/siri-cli.rb
           cd /tmp/tap-sync
           git config user.name "github-actions[bot]"
