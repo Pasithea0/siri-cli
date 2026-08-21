@@ -38,9 +38,87 @@ query, and reads the rendered answer back from the accessibility tree.
 
 ---
 
+## Troubleshooting
+
+### "siri" says it needs macOS 27 / the Siri AI app is required
+
+**siribridge is built for macOS 27 (Tahoe) and the new "Siri AI" app.** The old
+Siri surface (macOS 26 and earlier) is a Notification-Center overlay whose
+Accessibility tree is **empty** — it accepts a typed query but exposes no
+readable response, so the bridge cannot capture an answer there. That is a
+hard Apple limitation, not a bug in this tool.
+
+If you're on macOS 26 or older, `siri status` will still run, but `siri "query"`
+will fail to capture a response. **The fix is to update to macOS 27**, where the
+real Siri AI app exposes a full Accessibility tree that the bridge reads back.
+
+> Confirmed: on macOS 26.5.2 the `SiriNCService` overlay returned **0** AX
+> text elements, and Vision OCR of the response region produced nothing — the
+> answer only played as audio or rendered off-screen. macOS 27's Siri AI app
+> is a proper chat window and works end-to-end.
+
+### `siri "query"` hangs or times out (capture timed out)
+
+This usually means Siri AI ended up in a **windowless state** (no composer, no
+AX window) — e.g. it was launched with a focus-suppressing flag or the app was
+minimized to an unusable state. The backend tries to detect and recover from
+this, but if it persists:
+
+```bash
+# Quit and let the bridge relaunch it with a real window
+osascript -e 'tell application "Siri AI" to quit'
+siri "what time is it"
+```
+
+If it still hangs, check that Siri AI is actually open and windowed before
+running the query.
+
+### `siri` exits 1 with a missing-permission message
+
+You haven't granted Accessibility (and/or Screen Recording) to the terminal or
+app that runs `siri`. See the **Configure permissions** section above. macOS
+caches permissions — **fully quit and relaunch your terminal** after granting.
+
+```bash
+siri status   # shows exactly which permission is missing and how to enable it
+```
+
+### The response includes "Mauna Kea\nMount Everest" but looks noisy
+
+Siri AI renders its answer multiple times in the AX tree (plain text, then a
+rich "sources" card). The bridge dedupes identical lines and strips UI chrome,
+but the source names are intentionally kept because they're part of the answer.
+To see the deduped plain answer, the first block after the query echo is what
+you want.
+
+### macOS 26 fallback (`--backend typetosiri`)
+
+Provided for completeness but **best-effort and largely non-functional** — the
+macOS 26 overlay's empty AX tree means responses can't be read back. Prefer
+macOS 27.
+
+---
+
 ## Install
 
-From source:
+### Homebrew (recommended)
+
+A Homebrew formula (`Formula/siribridge.rb`) installs the `siri` command onto
+your PATH. Once the project has a GitHub release:
+
+```bash
+brew tap <your-org>/homebrew-siribridge
+brew install <your-org>/siribridge/siribridge
+siri --version   # → siri, version 0.1.0
+```
+
+Until the release tarball exists, build from a local checkout:
+
+```bash
+brew install --build-from-source --formula Formula/siribridge.rb
+```
+
+### From source
 
 ```bash
 git clone https://github.com/you/siribridge.git
@@ -208,8 +286,9 @@ siri "what time is it"
 
 - [x] macOS 27 Siri AI backend with response capture
 - [x] Bare `siri "query"` CLI
+- [x] Homebrew formula (`Formula/siribridge.rb`) exposing `siri` on PATH
+- [ ] Publish GitHub release (fill formula URL/sha256) + `brew tap`
 - [ ] macOS 27 rich-card image capture (OCR / screenshot region)
-- [ ] `brew` formula / `.app` packaging
 
 ---
 
