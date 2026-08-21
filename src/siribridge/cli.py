@@ -25,8 +25,10 @@ from siribridge import __version__, config
               help="Max seconds to wait for Siri's response to settle.")
 @click.option("--backend", default="siriai", show_default=True,
               help="siriai (macOS27 Siri AI app) or typetosiri (macOS26 overlay).")
+@click.option("--foreground/--background", default=False, show_default=True,
+              help="Bring Siri to the front (default is background — Siri stays behind your work).")
 @click.version_option(__version__)
-def main(query: tuple[str, ...], timeout: float, backend: str) -> None:
+def main(query: tuple[str, ...], timeout: float, backend: str, foreground: bool) -> None:
     """Ask the real macOS Siri from the command line.
 
     Pass a query in quotes (or as bare words) — e.g. `siri "what time is it"`.
@@ -49,16 +51,16 @@ def main(query: tuple[str, ...], timeout: float, backend: str) -> None:
 
     # Otherwise treat everything as the query.
     query_text = " ".join(query)
-    _ask_cmd(query_text, timeout=timeout, backend=backend)
+    _ask_cmd(query_text, timeout=timeout, backend=backend, foreground=foreground)
 
 
-def _ask_cmd(query: str, timeout: float, backend: str) -> None:
+def _ask_cmd(query: str, timeout: float, backend: str, foreground: bool) -> None:
     from siribridge.driver.base import SiriError
     from siribridge.driver.siriai import SiriAiBackend
     from siribridge.driver.typetosiri import TypeToSiriBackend
 
     if backend == "siriai":
-        backend_obj = SiriAiBackend()
+        backend_obj = SiriAiBackend(foreground=foreground)
     elif backend == "typetosiri":
         backend_obj = TypeToSiriBackend()
     else:

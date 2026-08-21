@@ -1,16 +1,21 @@
 """Siri AI backend (macOS 27).
 
 Drives the new "Siri AI.app" — a real, AX-accessible chat application (unlike
-the macOS 26 NC overlay whose AX tree was empty). The app exposes:
+the macOS 26 NC overlay whose AX tree was empty).
 
-- A conversation-history sidebar (Today / Yesterday / ... rows with text).
-- A "New Conversation" button to start a fresh thread.
-- A composer/input field once a conversation is active.
-- Rendered Siri responses as readable AX text (AXUnknown/AXStaticText).
+Background-first flow (default: does NOT bring Siri to the front, so you can
+keep working in your terminal/editor):
 
-The response-capture loop the whole project targets finally works here:
-summon -> start conversation -> type query -> submit -> settle-detect ->
-read response from the AX tree.
+1. Ensure the Siri AI app is running (launch if needed; never front it).
+2. New conversation via the AX "New Conversation" button (AXPress — no
+   keyboard focus required, so it works while another app is frontmost).
+3. Type the query via the AX composer (set AXValue + AXConfirm — focus-free).
+4. Wait for the response to settle in the AX tree.
+5. Extract the rendered response text from the AX tree.
+
+Everything runs through Accessibility, so it works with the app minimized,
+behind other windows, or in a corner. Pass `foreground=True` only when you
+want Siri to steal the front (not the default).
 """
 
 from __future__ import annotations
@@ -23,6 +28,8 @@ from . import base
 from ..capture import ax
 
 _SIRI_AI_APP = "/System/Applications/Siri AI.app"
+_SIRI_AI_APPNAME = "Siri AI"
+_SIRI_AI_BUNDLE = "com.apple.campo"
 _SIRI_AI_PID_CMD = ["pgrep", "-f", "Siri AI.app/Contents/MacOS/Siri AI"]
 
 
@@ -35,10 +42,14 @@ class SiriAiBackend(base.BridgeBackend):
         self,
         *,
         settle_kwargs: Optional[dict] = None,
-        submit_delay_s: float = 0.5,
+        submit_delay_s: float = 0.3,
+        open_delay_s: float = 1.5,
+        foreground: bool = False,
     ):
         self._settle_kwargs = settle_kwargs or {}
         self.submit_delay_s = submit_delay_s
+        self.open_delay_s = open_delay_s
+        self.foreground = foreground
 
     # -- health -----------------------------------------------------------
 
@@ -60,47 +71,49 @@ class SiriAiBackend(base.BridgeBackend):
         health = self.health()
         if not health["accessibility"]:
             raise base.PermissionsError("accessibility")
-        if not health["siri_ai_present"]:
-            raise base.SurfaceError("Siri AI app is not running")
 
         start = time.monotonic()
+
+        # Ensure the app is running; do NOT front it unless foreground=True.
+        self._ensure_running()
+        if self.foreground:
+            self._activate()
+
         pid = self._find_pid()
         if pid is None:
             raise base.SurfaceError("Siri AI app is not running")
-        # NOTE: we do NOT osascript-activate here. `tell app to activate`
-        # steals focus from the composer so subsequent keystrokes don't land.
-        # Pressing "New Conversation" already brings the app forward and
-        # focuses the composer.
-        self._start_new_conversation(pid)
-        self._type_and_submit(query)
 
-        # Poll for the conversation response. Skip None (chrome-only) results;
-        # return the first non-empty response text that stops changing.
-        app = ax.app_for_pid(pid)
-        last: Optional[str] = None
-        stable = 0
+        # Attempt the query; on failure (stuck app), reset once and retry.
+        try:
+            return self._ask_once(query, pid, timeout_s, start)
+        except base.CaptureError:
+            self._reset_app()
+            pid = self._find_pid()
+            if pid is None:
+                raise base.SurfaceError("Siri AI app not available after reset")
+            return self._ask_once(query, pid, timeout_s, start)
+
+    def _ask_once(self, query: str, pid: int, timeout_s: float, start: float) -> base.SiriResponse:
+        """Run the query flow once against the given app instance."""
+        # New conversation via the AX "New Conversation" button (focus-free).
+        self._new_conversation(pid)
+        # Type the query via the AX composer (set value + confirm).
+        self._type_query_ax(query)
+
+        # Wait for the response to settle.
         deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            texts = self._extract_response_text(pid)
-            if texts:
-                if texts == last:
-                    stable += 1
-                    if stable >= 2:  # two identical reads = settled
-                        break
-                else:
-                    stable = 0
-                last = texts
-            time.sleep(0.5)
+        text = self._wait_for_response(pid, deadline)
 
         elapsed_ms = int((time.monotonic() - start) * 1000)
-        if not last:
+        if not text:
             raise base.CaptureError("Timed out waiting for Siri AI response")
+
         return base.SiriResponse(
-            text=last,
+            text=text,
             backend=self.name,
             elapsed_ms=elapsed_ms,
             capture_mode="ax",
-            raw=last,
+            raw=text,
         )
 
     # -- helpers ----------------------------------------------------------
@@ -114,39 +127,194 @@ class SiriAiBackend(base.BridgeBackend):
         except Exception:
             return None
 
-    def _ensure_active(self, pid: int) -> None:
-        """Bring the Siri AI app to the foreground."""
-        subprocess.run(
-            ["osascript", "-e", f'tell application "Siri AI" to activate'],
-            capture_output=True, text=True, timeout=5,
-        )
-        time.sleep(0.5)
+    def _ensure_running(self) -> None:
+        """Launch the app if it isn't running. Never fronts it."""
+        if self._find_pid() is None:
+            subprocess.run(["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5)
+            time.sleep(self.open_delay_s)
 
-    def _start_new_conversation(self, pid: int) -> None:
-        """Click the 'New Conversation' button in the AX tree."""
+    def _activate(self) -> None:
+        """Activate the Siri AI app via AppKit (brings it to the front).
+
+        Only used when foreground=True. NSRunningApplication with the correct
+        bundle ID (com.apple.campo) reliably makes it frontmost.
+        """
+        from AppKit import (
+            NSApplicationActivateIgnoringOtherApps,
+            NSRunningApplication,
+        )
+
+        apps = NSRunningApplication.runningApplicationsWithBundleIdentifier_(_SIRI_AI_BUNDLE)
+        for a2 in apps:
+            a2.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+            return
+
+    def _new_conversation(self, pid: int) -> None:
+        """Start a new conversation via the AX "New Conversation" button.
+
+        AXPress is focus-independent — it works while the terminal is
+        frontmost, so Siri can stay in the background. (Cmd+N keystroke is
+        deliberately NOT used: it requires the app to be frontmost.)
+        """
         app = ax.app_for_pid(pid)
-        el = ax.find_element(app, label_contains="New Conversation")
-        if el is not None:
-            # Perform the AXPress action on the matching element.
-            self._press_by_label(pid, "New Conversation")
+        self._find_and_press(app, "New Conversation")
         time.sleep(0.6)
 
-    def _press_by_label(self, pid: int, label: str) -> None:
-        """Find an element by label and perform AXPress."""
+    def _composer_ready(self, pid: int) -> bool:
+        """True if the app has a composer we can type into."""
+        app = ax.app_for_pid(pid)
+        return self._find_composer(app) is not None
+
+    def _reset_app(self) -> None:
+        """Quit and relaunch the Siri AI app to clear stuck state."""
+        subprocess.run(
+            ["osascript", "-e", 'tell application "Siri AI" to quit'],
+            capture_output=True, text=True, timeout=5,
+        )
+        time.sleep(2)
+        subprocess.run(["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5)
+        time.sleep(self.open_delay_s)
+        # After a fresh launch the app may briefly come to front; leave it.
+        # Don't re-front it beyond launch.
+
+    def _focus_composer(self) -> None:
+        """Ensure the composer text field has keyboard focus.
+
+        Only meaningful in foreground mode; harmless otherwise.
+        """
+        pid = self._find_pid()
+        if pid is None:
+            return
+        app = ax.app_for_pid(pid)
+        field = self._find_composer(app)
+        if field is not None:
+            import ApplicationServices as a
+
+            act_err, actions = a.AXUIElementCopyActionNames(field, None)
+            if act_err == 0 and "AXFocus" in list(actions):
+                a.AXUIElementPerformAction(field, "AXFocus")
+        time.sleep(0.2)
+
+    def _type_query_ax(self, query: str) -> None:
+        """Type the query via the AX composer (set value + confirm).
+
+        Reliable — no dependency on the app being frontmost. Falls back to
+        keystrokes if the composer can't be found.
+        """
         import ApplicationServices as a
 
+        pid = self._find_pid()
+        if pid is None:
+            return
         app = a.AXUIElementCreateApplication(pid)
-        self._find_and_press(app, label)
+        field = self._find_composer(app)
+        if field is None:
+            self._type_query(query)
+            return
+        err = a.AXUIElementSetAttributeValue(field, "AXValue", query)
+        if err != 0:
+            self._type_query(query)
+            return
+        time.sleep(self.submit_delay_s)
+        a.AXUIElementPerformAction(field, "AXConfirm")
+
+    def _type_query(self, query: str) -> None:
+        """Fallback: type via System Events keystroke (needs app frontmost)."""
+        subprocess.run(
+            ["osascript", "-e", f'tell application "System Events" to keystroke {query!r}'],
+            capture_output=True, text=True, timeout=5,
+        )
+        time.sleep(self.submit_delay_s)
+        subprocess.run(
+            ["osascript", "-e", 'tell application "System Events" to key code 36'],
+            capture_output=True, text=True, timeout=5,
+        )  # Return
+
+    def _wait_for_response(self, pid: int, deadline: float) -> Optional[str]:
+        """Poll the AX tree until the response stops changing; return the text.
+
+        Returns None if no response rendered before the deadline (the app may
+        be stuck — caller resets and retries).
+        """
+        last: Optional[str] = None
+        stable = 0
+        while time.monotonic() < deadline:
+            texts = self._extract_response_text(pid)
+            if texts:
+                if texts == last:
+                    stable += 1
+                    if stable >= 2:
+                        return texts  # settled
+                else:
+                    stable = 0
+                last = texts
+            time.sleep(0.4)
+        return None
+
+    def _copy_response(self) -> Optional[str]:
+        """Select the response and copy it to the clipboard, then read it.
+
+        Focuses the conversation, Cmd+A to select all, Cmd+C to copy, then
+        reads pbpaste. Returns None if the clipboard is empty or only
+        contains UI chrome (no real response).
+        """
+        subprocess.run(
+            ["osascript", "-e", 'tell application "System Events" to keystroke "a" using {command down}'],
+            capture_output=True, text=True, timeout=5,
+        )
+        time.sleep(0.15)
+        subprocess.run(
+            ["osascript", "-e", 'tell application "System Events" to keystroke "c" using {command down}'],
+            capture_output=True, text=True, timeout=5,
+        )
+        time.sleep(0.2)
+        out = subprocess.run(["pbpaste"], capture_output=True, text=True, timeout=5)
+        text = out.stdout.strip()
+        if not text:
+            return None
+        # If the copied text is just UI chrome (sidebar header), it's not a
+        # real response — return None so the caller treats it as a failure.
+        chrome = {
+            "New Conversation", "Search", "No Conversation Selected", "",
+        }
+        if text in chrome:
+            return None
+        return text
+
+    def _find_composer(self, app) -> Optional[object]:
+        """Return the composer AXTextField, or None."""
+        import ApplicationServices as a
+
+        def walk(el, depth=0):
+            if depth > 20:
+                return None
+            err_r, role = a.AXUIElementCopyAttributeValue(el, "AXRole", None)
+            if err_r == 0 and str(role) == "AXTextField":
+                act_err, actions = a.AXUIElementCopyActionNames(el, None)
+                if act_err == 0 and ("AXConfirm" in list(actions) or "AXFocus" in list(actions)):
+                    return el
+            err_c, ch = a.AXUIElementCopyAttributeValue(el, "AXChildren", None)
+            if err_c == 0 and ch:
+                for c in ch:
+                    r = walk(c, depth + 1)
+                    if r is not None:
+                        return r
+            return None
+
+        return walk(app)
 
     def _find_and_press(self, el, label: str, depth: int = 0) -> bool:
+        """Find an AXButton with the label and perform AXPress on it.
+
+        Used as a reliable fallback to start a new conversation when the
+        Cmd+N shortcut isn't accepted (e.g. app not fully focused).
+        """
         import ApplicationServices as a
 
         if depth > 25:
             return False
         err_r, role = a.AXUIElementCopyAttributeValue(el, "AXRole", None)
         role = str(role) if err_r == 0 else ""
-        # Only press AXButton elements (the toolbar "New Conversation" button);
-        # sidebar text rows also carry the label but aren't actionable.
         if role == "AXButton":
             for attr in ("AXTitle", "AXValue", "AXDescription", "AXLabel"):
                 err, val = a.AXUIElementCopyAttributeValue(el, attr, None)
@@ -160,72 +328,10 @@ class SiriAiBackend(base.BridgeBackend):
                     return True
         return False
 
-    def _type_and_submit(self, query: str) -> None:
-        """Type into the composer and submit via AX (no focus dependency).
-
-        Sets the composer AXTextField's AXValue directly and calls its
-        AXConfirm action. This avoids `System Events` keystrokes, which only
-        land if the Siri AI app happens to be frontmost — unreliable when an
-        agent/terminal is in the foreground.
-        """
-        import ApplicationServices as a
-
-        app = a.AXUIElementCreateApplication(self._find_pid())
-        field = self._find_composer(app)
-        if field is None:
-            # Fallback: try keystrokes (works when the app is frontmost).
-            self._type_and_submit_keystroke(query)
-            return
-
-        # Set the composer's value to the query.
-        err = a.AXUIElementSetAttributeValue(field, "AXValue", query)
-        if err != 0:
-            raise base.CaptureError(f"Failed to set composer value (err {err})")
-        time.sleep(self.submit_delay_s)
-        # Submit via AXConfirm.
-        a.AXUIElementPerformAction(field, "AXConfirm")
-
-    def _find_composer(self, app) -> Optional[object]:
-        """Return the composer AXTextField, or None."""
-        import ApplicationServices as a
-
-        def walk(el, depth=0):
-            if depth > 20:
-                return None
-            err_r, role = a.AXUIElementCopyAttributeValue(el, "AXRole", None)
-            if err_r == 0 and str(role) == "AXTextField":
-                act_err, actions = a.AXUIElementCopyActionNames(el, None)
-                if act_err == 0 and "AXConfirm" in list(actions):
-                    return el
-            err_c, ch = a.AXUIElementCopyAttributeValue(el, "AXChildren", None)
-            if err_c == 0 and ch:
-                for c in ch:
-                    r = walk(c, depth + 1)
-                    if r is not None:
-                        return r
-            return None
-
-        return walk(app)
-
-    def _type_and_submit_keystroke(self, query: str) -> None:
-        """Fallback: type via System Events keystroke (needs app frontmost)."""
-        subprocess.run(
-            ["osascript", "-e", f'tell application "System Events" to keystroke {query!r}'],
-            capture_output=True, text=True, timeout=5,
-        )
-        time.sleep(self.submit_delay_s)
-        subprocess.run(
-            ["osascript", "-e", 'tell application "System Events" to key code 36'],
-            capture_output=True, text=True, timeout=5,
-        )  # Return
+    # -- response extraction (used for the settle-wait) -------------------
 
     def _extract_response_text(self, pid: int) -> Optional[str]:
-        """Read the response from the Siri AI conversation area.
-
-        Walks only the app's AX windows (not the process-level menu bar /
-        Finder menus) and keeps the conversation text. Falls back to the
-        full process tree if no window is found.
-        """
+        """Read the current conversation text from the Siri AI window."""
         app = ax.app_for_pid(pid)
         texts: list[str] = []
         windows = self._windows(app)
@@ -280,6 +386,13 @@ class SiriAiBackend(base.BridgeBackend):
                 continue
             if s.startswith(noise_prefixes):
                 continue
+            # Ignore numeric-only lines (the app leaks progress/animation
+            # values like "0.0063" into the AX tree).
+            try:
+                float(s)
+                continue
+            except ValueError:
+                pass
             # Skip a line that's identical to the previous kept line
             # (the app often renders the query/answer twice).
             if keep and s == keep[-1]:
