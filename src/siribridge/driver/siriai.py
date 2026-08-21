@@ -128,9 +128,17 @@ class SiriAiBackend(base.BridgeBackend):
             return None
 
     def _ensure_running(self) -> None:
-        """Launch the app if it isn't running. Never fronts it."""
+        """Launch the app if it isn't running, WITHOUT bringing it to front.
+
+        Uses `open -gj` — the `-g` flag launches the app but does NOT make it
+        active, so it never steals focus from the user's frontmost window.
+        (`open -a` would front it on launch — the bug that made Siri appear
+        foreground when it had to be started.)
+        """
         if self._find_pid() is None:
-            subprocess.run(["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5)
+            subprocess.run(
+                ["open", "-gj", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
+            )
             time.sleep(self.open_delay_s)
 
     def _activate(self) -> None:
@@ -172,10 +180,11 @@ class SiriAiBackend(base.BridgeBackend):
             capture_output=True, text=True, timeout=5,
         )
         time.sleep(2)
-        subprocess.run(["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5)
+        # Relaunch WITHOUT fronting (open -gj keeps focus with the user).
+        subprocess.run(
+            ["open", "-gj", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
+        )
         time.sleep(self.open_delay_s)
-        # After a fresh launch the app may briefly come to front; leave it.
-        # Don't re-front it beyond launch.
 
     def _focus_composer(self) -> None:
         """Ensure the composer text field has keyboard focus.
