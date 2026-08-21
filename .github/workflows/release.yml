@@ -81,7 +81,7 @@ jobs:
         # `brew tap Pasithea0/homebrew-siri-cli && brew install siri-cli`
         # pulls the release-correct formula.
         # Uses the GH_TOKEN PAT secret (fine-grained, has write access to BOTH
-        # repos), since the built-in GITHUB_TOKEN is scoped to this repo only.
+        # repos).
         if: ${{ ! inputs.dry_run }}
         env:
           TAP_REPO: Pasithea0/homebrew-siri-cli
