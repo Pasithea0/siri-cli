@@ -114,12 +114,17 @@ siri what time is it
 siri "what is the capital of Japan"
 ```
 
-The captured response is printed to stdout. The command exits `0` on
-success, non-zero on a permissions/surface/capture error.
+**Background by default.** Siri AI stays behind whatever you're working in —
+it never steals focus, so you can keep typing in your terminal/editor while
+Siri answers in the background. The captured response is printed to stdout.
+The command exits `0` on success, non-zero on a permissions/surface/capture
+error.
 
 ### Options
 
 ```bash
+siri --foreground "query"       # bring Siri to the front (default is background)
+siri --background "query"       # explicit: keep Siri behind your work (default)
 siri --backend siriai "query"   # default: siriai (macOS 27 Siri AI app)
 siri --backend typetosiri "query"   # macOS 26 overlay (best-effort)
 siri --timeout 45 "query"       # max seconds to wait (default 30)
@@ -146,9 +151,9 @@ siri --version   # version
 
 ```
 siri "query"
-  -> SiriAiBackend
-       -> find Siri AI app (pid)
-       -> press "New Conversation"  (AXButton via AXPress)
+  -> SiriAiBackend  (foreground=False by default)
+       -> find Siri AI app (pid); launch if needed, never front it
+       -> press "New Conversation"  (AXButton via AXPress — focus-free)
        -> set composer AXTextField value + AXConfirm  (no focus dependency)
        -> poll the AX tree until the response stops changing
        -> filter app chrome / menu noise, print the answer
@@ -156,10 +161,16 @@ siri "query"
 
 Key design choices:
 
-- **No `osascript activate`** — activating the app steals focus from the
-  composer, so keystrokes stop landing. Instead we set the composer's
-  `AXValue` and call its `AXConfirm` action directly, which works regardless
-  of which app is frontmost.
+- **Background by default** — Siri AI is never brought to the front unless
+  you pass `--foreground`. New conversation, typing, and reading all go
+  through Accessibility, so they work while your terminal/editor is the
+  frontmost app.
+- **AXPress "New Conversation"** (not the Cmd+N keystroke) — the keystroke
+  only lands if the app is frontmost; AXPress works regardless of focus.
+- **No `osascript activate`** — activating the app steals focus from your
+  work and is unnecessary since everything is AX-driven.
+- **AX-composer input** — we set the composer's `AXValue` and call its
+  `AXConfirm` action directly, which works no matter which app is frontmost.
 - **Window-scoped AX extraction** — we read only the Siri AI window's AX
   tree, not the process-wide tree (which includes the macOS menu bar and
   Finder submenus), then filter out known UI chrome.
