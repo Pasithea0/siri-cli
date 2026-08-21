@@ -1,4 +1,4 @@
-"""siribridge CLI.
+"""siri_cli CLI.
 
 Primary usage is a bare query:
 
@@ -16,7 +16,7 @@ import sys
 
 import click
 
-from siribridge import __version__, config
+from siri_cli import __version__, config
 
 
 @click.command(context_settings={"ignore_unknown_options": False})
@@ -55,9 +55,9 @@ def main(query: tuple[str, ...], timeout: float, backend: str, foreground: bool)
 
 
 def _ask_cmd(query: str, timeout: float, backend: str, foreground: bool) -> None:
-    from siribridge.driver.base import SiriError
-    from siribridge.driver.siriai import SiriAiBackend
-    from siribridge.driver.typetosiri import TypeToSiriBackend
+    from siri_cli.driver.base import SiriError
+    from siri_cli.driver.siriai import SiriAiBackend
+    from siri_cli.driver.typetosiri import TypeToSiriBackend
 
     if backend == "siriai":
         backend_obj = SiriAiBackend(foreground=foreground)
@@ -98,7 +98,7 @@ def _health_cmd() -> None:
 
 def _print_usage() -> None:
     click.echo(
-        "siribridge — ask the real macOS Siri from the CLI\n"
+        "siri_cli — ask the real macOS Siri from the CLI\n"
         "\n"
         "Usage:\n"
         '  siri "what time is it"      Ask Siri (response printed)\n'

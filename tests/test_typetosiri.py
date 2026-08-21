@@ -1,4 +1,4 @@
-"""Tests for siribridge.driver.typetosiri — the Type-to-Siri backend.
+"""Tests for siri_cli.driver.typetosiri — the Type-to-Siri backend.
 
 Live UI interaction is not exercised here (needs a real Siri session); we
 unit-test the permission gating, health reporting, and the ask() flow using
@@ -8,8 +8,8 @@ stable fake response.
 
 import pytest
 
-from siribridge.driver import typetosiri
-from siribridge.driver.base import PermissionsError
+from siri_cli.driver import typetosiri
+from siri_cli.driver.base import PermissionsError
 
 
 def _perm(granted):

@@ -1,4 +1,4 @@
-"""Tests for siribridge.capture.ocr — OCR result model + fallback wiring.
+"""Tests for siri_cli.capture.ocr — OCR result model + fallback wiring.
 
 The real Vision OCR needs a live screen + TCC grant, so we test the pure
 pieces (OCRResult model, screen_size fallback, extract_text_from_region
@@ -7,7 +7,7 @@ join logic) by mocking the capture/OCR primitives.
 
 import pytest
 
-from siribridge.capture import ocr
+from siri_cli.capture import ocr
 
 
 def test_ocr_result_defaults():

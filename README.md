@@ -1,4 +1,4 @@
-# siribridge
+# siri-cli
 
 Ask the **real macOS Siri** from your terminal and read back its actual
 response. This is not a wrapper for Apple Intelligence like Apfel or a Shortcut.
@@ -14,7 +14,7 @@ That would be 144.
 Siri has no AppleScript dictionary, no CLI, and no stable API. The only way
 to reach the *real* assistant surface is UI automation over the macOS
 Accessibility (AX) framework. Prior art (`SiriSays.spoon`, `TypeToSiri`)
-proved the **send** half but never the **response-capture** half. siribridge
+proved the **send** half but never the **response-capture** half. siri-cli
 ships the missing half: send a query, wait for the response to finish
 rendering, and extract the answer text.
 
@@ -23,7 +23,7 @@ rendering, and extract the answer text.
 ## Status
 
 **Working today (macOS 27):** the new **Siri AI** app is a real, AX-accessible
-chat application. siribridge drives it — starts a conversation, types your
+chat application. siri-cli drives it — starts a conversation, types your
 query, and reads the rendered answer back from the accessibility tree.
 
 **Not tested on macOS 26:** the old **Siri** works under the control center surface, which is not a reliable surface for accessibility control or OCR reading. 
@@ -42,7 +42,7 @@ query, and reads the rendered answer back from the accessibility tree.
 
 ### "siri" says it needs macOS 27 / the Siri AI app is required
 
-**siribridge is built for macOS 27 (Tahoe) and the new "Siri AI" app.** The old
+**siri-cli is built for macOS 27 (Tahoe) and the new "Siri AI" app.** The old
 Siri surface (macOS 26 and earlier) is a Notification-Center overlay whose
 Accessibility tree is **empty** — it accepts a typed query but exposes no
 readable response, so the bridge cannot capture an answer there. That is a
@@ -103,26 +103,26 @@ macOS 27.
 
 ### Homebrew (recommended)
 
-A Homebrew formula (`Formula/siribridge.rb`) installs the `siri` command onto
+A Homebrew formula (`Formula/siri-cli.rb`) installs the `siri` command onto
 your PATH. Once the project has a GitHub release:
 
 ```bash
-brew tap <your-org>/homebrew-siribridge
-brew install <your-org>/siribridge/siribridge
+brew tap Pasithea0/homebrew-siri-cli
+brew install Pasithea0/siri-cli/siri-cli
 siri --version   # → siri, version 0.1.0
 ```
 
 Until the release tarball exists, build from a local checkout:
 
 ```bash
-brew install --build-from-source --formula Formula/siribridge.rb
+brew install --build-from-source --formula Formula/siri-cli.rb
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/you/siribridge.git
-cd siribridge
+git clone https://github.com/Pasithea0/siri-cli.git
+cd siri-cli
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -140,7 +140,7 @@ ln -s "$(pwd)/.venv/bin/siri" /usr/local/bin/siri
 
 ## Configure permissions (required once)
 
-siribridge needs macOS permissions to read and drive the Siri AI app. You
+siri-cli needs macOS permissions to read and drive the Siri AI app. You
 must grant these **to the terminal/app that runs `siri`** (Terminal, iTerm,
 your IDE, or the shell you invoke it from).
 
@@ -255,7 +255,7 @@ Key design choices:
 ### Project layout
 
 ```
-src/siribridge/
+src/siri-cli/
   cli.py              CLI entrypoint (bare query + status/health)
   config.py           permission + environment checks
   state.py            settle-detection state machine
@@ -286,7 +286,7 @@ siri "what time is it"
 
 - [x] macOS 27 Siri AI backend with response capture
 - [x] Bare `siri "query"` CLI
-- [x] Homebrew formula (`Formula/siribridge.rb`) exposing `siri` on PATH
+- [x] Homebrew formula (`Formula/siri-cli.rb`) exposing `siri` on PATH
 - [ ] Publish GitHub release (fill formula URL/sha256) + `brew tap`
 - [ ] macOS 27 rich-card image capture (OCR / screenshot region)
 

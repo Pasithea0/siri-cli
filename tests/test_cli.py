@@ -1,9 +1,9 @@
-"""Tests for the siribridge CLI entrypoint — argument dispatch."""
+"""Tests for the siri_cli CLI entrypoint — argument dispatch."""
 
 import pytest
 from click.testing import CliRunner
 
-from siribridge.cli import main
+from siri_cli.cli import main
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def test_no_args_prints_usage(runner):
 
 
 def test_status_subcommand(runner, monkeypatch):
-    from siribridge import config
+    from siri_cli import config
 
     monkeypatch.setattr(config, "check", lambda: _ok_status())
     result = runner.invoke(main, ["status"])
@@ -27,7 +27,7 @@ def test_status_subcommand(runner, monkeypatch):
 
 
 def test_health_subcommand(runner, monkeypatch):
-    from siribridge import config
+    from siri_cli import config
 
     monkeypatch.setattr(config, "check", lambda: _ok_status())
     result = runner.invoke(main, ["health"])
@@ -42,10 +42,10 @@ def test_bare_query_dispatches_to_backend(runner, monkeypatch):
     class _FakeBackend:
         def ask(self, query, timeout_s=30.0):
             calls["query"] = query
-            from siribridge.driver.base import SiriResponse
+            from siri_cli.driver.base import SiriResponse
             return SiriResponse(text="It is noon.", backend="fake", elapsed_ms=5)
 
-    from siribridge.driver import siriai as siriai_mod
+    from siri_cli.driver import siriai as siriai_mod
     monkeypatch.setattr(siriai_mod, "SiriAiBackend", lambda *a, **k: _FakeBackend())
     result = runner.invoke(main, ["what", "time", "is", "it"])
     assert result.exit_code == 0
@@ -59,10 +59,10 @@ def test_quoted_query(runner, monkeypatch):
     class _FakeBackend:
         def ask(self, query, timeout_s=30.0):
             calls["query"] = query
-            from siribridge.driver.base import SiriResponse
+            from siri_cli.driver.base import SiriResponse
             return SiriResponse(text="42", backend="fake", elapsed_ms=1)
 
-    from siribridge.driver import siriai as siriai_mod
+    from siri_cli.driver import siriai as siriai_mod
     monkeypatch.setattr(siriai_mod, "SiriAiBackend", lambda *a, **k: _FakeBackend())
     result = runner.invoke(main, ['"what is 6 times 7"'])
     assert result.exit_code == 0

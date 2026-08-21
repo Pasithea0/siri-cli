@@ -1,6 +1,6 @@
-"""Tests for siribridge.driver.base — response/error types."""
+"""Tests for siri_cli.driver.base — response/error types."""
 
-from siribridge.driver.base import (
+from siri_cli.driver.base import (
     CaptureError,
     PermissionsError,
     SiriError,

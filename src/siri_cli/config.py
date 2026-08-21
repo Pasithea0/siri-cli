@@ -1,6 +1,6 @@
 """Permissions and environment checks.
 
-Determines whether this process has the macOS privileges siribridge needs:
+Determines whether this process has the macOS privileges siri_cli needs:
 - Accessibility (AX) trust — required to inspect/drive the AX UI tree.
 - Screen Recording — required to capture window/screen images for OCR.
 """
@@ -149,11 +149,11 @@ def how_to_enable() -> Dict[str, str]:
     guide = {
         "accessibility": (
             "System Settings > Privacy & Security > Accessibility > "
-            "enable the terminal/app that runs siribridge."
+            "enable the terminal/app that runs siri_cli."
         ),
         "screen_recording": (
             "System Settings > Privacy & Security > Screen Recording > "
-            "enable the terminal/app that runs siribridge."
+            "enable the terminal/app that runs siri_cli."
         ),
         "type_to_siri": (
             "System Settings > Accessibility > Siri > turn on 'Type to Siri'. "

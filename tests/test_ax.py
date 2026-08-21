@@ -1,11 +1,11 @@
-"""Tests for siribridge.capture.ax — pure AX-snapshot logic.
+"""Tests for siri_cli.capture.ax — pure AX-snapshot logic.
 
 These test the AXElement model and text-extraction rules without a live
 macOS accessibility session (that needs TCC grants and is exercised by the
 integration path).
 """
 
-from siribridge.capture.ax import AXElement, extract_texts, find_element
+from siri_cli.capture.ax import AXElement, extract_texts, find_element
 
 # Minimal fake element tree that mimics what _children/walk_tree yield.
 # We build a plain nested structure and a fake app ref with a walk.
@@ -63,7 +63,7 @@ def test_find_element_by_label_contains():
     )
 
     # monkeypatch module-level helpers to use our fake tree
-    import siribridge.capture.ax as axmod
+    import siri_cli.capture.ax as axmod
 
     axmod._children = lambda el: iter(el.children)
     axmod._element_to_snapshot = _snap
@@ -73,7 +73,7 @@ def test_find_element_by_label_contains():
 
 
 def test_find_element_by_role():
-    import siribridge.capture.ax as axmod
+    import siri_cli.capture.ax as axmod
 
     axmod._children = lambda el: iter(el.children)
     axmod._element_to_snapshot = _snap
@@ -84,7 +84,7 @@ def test_find_element_by_role():
 
 
 def test_extract_texts_collects_text_roles_in_order():
-    import siribridge.capture.ax as axmod
+    import siri_cli.capture.ax as axmod
 
     axmod._children = lambda el: iter(el.children)
     axmod._element_to_snapshot = _snap

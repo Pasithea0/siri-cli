@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "siribridge"
+name = "siri-cli"
 version = "0.1.0"
-description = "Bidirectional CUA-to-Siri interface: ask the real macOS Siri from a CLI or MCP server and capture the response."
+description = "Ask the real macOS Siri from the terminal and read back its response."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -31,7 +31,7 @@ dev = [
 ]
 
 [project.scripts]
-siri = "siribridge.cli:main"
+siri = "siri_cli.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

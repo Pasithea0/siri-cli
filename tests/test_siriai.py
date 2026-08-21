@@ -1,10 +1,10 @@
-"""Tests for siribridge.driver.siriai — the macOS 27 Siri AI backend."""
+"""Tests for siri_cli.driver.siriai — the macOS 27 Siri AI backend."""
 
 import pytest
 
-from siribridge import config
-from siribridge.driver import siriai
-from siribridge.driver.base import PermissionsError
+from siri_cli import config
+from siri_cli.driver import siriai
+from siri_cli.driver.base import PermissionsError
 
 
 def _perm(granted):

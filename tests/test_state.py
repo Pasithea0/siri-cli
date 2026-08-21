@@ -1,6 +1,6 @@
-"""Tests for siribridge.state — settle-detection logic."""
+"""Tests for siri_cli.state — settle-detection logic."""
 
-from siribridge.state import SettleDetector, wait_for_settle
+from siri_cli.state import SettleDetector, wait_for_settle
 
 
 def test_settles_after_stable_samples():

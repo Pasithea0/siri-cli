@@ -1,22 +1,22 @@
-# Homebrew formula for siribridge.
+# Homebrew formula for siri-cli.
 #
-# Install (once a release tag + tarball exist on GitHub):
-#   brew tap <your-org>/homebrew-siribridge
-#   brew install <your-org>/siribridge/siribridge
+# Install:
+#   brew tap Pasithea0/homebrew-siri-cli
+#   brew install Pasithea0/siri-cli/siri-cli
 #
 # Or build from source with a local checkout:
-#   brew install --build-from-source --formula Formula/siribridge.rb
+#   brew install --build-from-source --formula Formula/siri-cli.rb
 #
 # This exposes the `siri` command on your PATH.
 
-class Siribridge < Formula
+class SiriCli < Formula
   include Language::Python::Virtualenv
 
   desc "Ask the real macOS Siri from the terminal and read back its response"
-  homepage "https://github.com/your-org/siribridge" # TODO: set real repo URL before publishing
-  # TODO: after creating a v0.1.0 GitHub release, set the real tarball URL
-  # and run `brew formula` / `brew audit` to fill the real sha256.
-  url "https://github.com/your-org/siribridge/archive/refs/tags/v0.1.0.tar.gz"
+  homepage "https://github.com/Pasithea0/siri-cli"
+  # The URL/sha256 are filled by the release workflow (semantic-release)
+  # via @semantic-release/exec after tagging. Template below:
+  url "https://github.com/Pasithea0/siri-cli/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
 
@@ -27,7 +27,7 @@ class Siribridge < Formula
 
   def install
     # Create an isolated venv and pip-install the package + deps (pyobjc,
-    # click, mcp) from PyPI. The `siri` console script lands in libexec/bin.
+    # click) from PyPI. The `siri` console script lands in libexec/bin.
     venv = virtualenv_create(libexec, "python3.12")
     venv.pip_install buildpath
     bin.install_symlink libexec/"bin/siri"
@@ -35,7 +35,7 @@ class Siribridge < Formula
 
   def caveats
     <<~EOS
-      siribridge reads the macOS Siri AI app via the Accessibility API.
+      siri-cli reads the macOS Siri AI app via the Accessibility API.
 
       After installing, grant Accessibility (and optionally Screen Recording)
       to the terminal/app that runs `siri`:

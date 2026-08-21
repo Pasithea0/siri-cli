@@ -1,4 +1,4 @@
-"""Tests for siribridge.config — permissions & environment checks.
+"""Tests for siri_cli.config — permissions & environment checks.
 
 Pure-logic tests only; the pyobjc probes are exercised by the live
 `check()` path and integration tests, not here (they need a real macOS
@@ -9,7 +9,7 @@ import importlib
 
 import pytest
 
-import siribridge.config as config
+import siri_cli.config as config
 
 
 def _make_status(
