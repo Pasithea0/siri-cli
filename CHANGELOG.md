@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/Pasithea0/siri-cli/compare/v1.0.1...v1.1.0) (2026-08-21)
+
+
+### Bug Fixes
+
+* **finalize:** anchor formula url/sha256 regex to top-level only ([99bdebe](https://github.com/Pasithea0/siri-cli/commit/99bdebe37b5423274178f27307d87f0a8a12fe60))
+
+
+### Features
+
+* release bumps __version__ in package __init__ ([2fd5fb8](https://github.com/Pasithea0/siri-cli/commit/2fd5fb8363925bcdf871c2cdf70035268427488e))
+
 ## [1.0.1](https://github.com/Pasithea0/siri-cli/compare/v1.0.0...v1.0.1) (2026-08-21)
 
 
