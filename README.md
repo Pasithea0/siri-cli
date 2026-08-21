@@ -1,7 +1,7 @@
 # siribridge
 
 Ask the **real macOS Siri** from your terminal and read back its actual
-response — bidirectional, not fire-and-forget.
+response. This is not a wrapper for Apple Intelligence like Apfel or a Shortcut.
 
 ```console
 $ siri "what is 12 times 12"
@@ -26,16 +26,13 @@ rendering, and extract the answer text.
 chat application. siribridge drives it — starts a conversation, types your
 query, and reads the rendered answer back from the accessibility tree.
 
-**macOS 26 note:** the older `SiriNCService` overlay exposes an **empty AX
-tree** (its response surface is not readable by third-party automation), so
-response capture is not reliable there. The `typetosiri` backend exists as a
-best-effort fallback but is not recommended.
+**Not tested on macOS 26:** the old **Siri** works under the control center surface, which is not a reliable surface for accessibility control or OCR reading. 
 
 ---
 
 ## Requirements
 
-- **macOS 27** (Tahoe+ with the new "Siri AI" app) — recommended
+- **macOS 27** (Tahoe+ with the new "Siri AI" app)
 - Apple Silicon or Intel
 - Python 3.11+
 
@@ -126,7 +123,7 @@ error.
 siri --foreground "query"       # bring Siri to the front (default is background)
 siri --background "query"       # explicit: keep Siri behind your work (default)
 siri --backend siriai "query"   # default: siriai (macOS 27 Siri AI app)
-siri --backend typetosiri "query"   # macOS 26 overlay (best-effort)
+siri --backend typetosiri "query"   # macOS 26 overlay (best-effort - untested)
 siri --timeout 45 "query"       # max seconds to wait (default 30)
 ```
 
@@ -211,7 +208,6 @@ siri "what time is it"
 
 - [x] macOS 27 Siri AI backend with response capture
 - [x] Bare `siri "query"` CLI
-- [ ] MCP server exposing `siri_ask` to agent frameworks
 - [ ] macOS 27 rich-card image capture (OCR / screenshot region)
 - [ ] `brew` formula / `.app` packaging
 
