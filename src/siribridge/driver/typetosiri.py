@@ -24,9 +24,10 @@ from .. import config
 from ..capture import ax
 from ..capture import ocr
 
-# Type-to-Siri default hotkey. Fn maps to a "globe"/Fn keycode in CGEvent
-# terms; the prefs read earlier showed the Fn+Space shortcut.
-_FN_SPACE = "fn+space"
+# Siri summon hotkey. On this machine Siri is bound to double-press Command
+# (keycode 55 = left Command), per KeyboardShortcutSAE params (32,55). A
+# single Command+Space is Raycast here, so we use the double-Command summon.
+_DOUBLE_CMD = "double-cmd"
 
 # Fallback: open Siri via its launcher app if hotkey summon is unreliable.
 _SIRI_APP = "/System/Library/CoreServices/Siri.app"
@@ -34,19 +35,23 @@ _SIRI_APP = "/System/Library/CoreServices/Siri.app"
 
 def _press_hotkey(hotkey: str) -> None:
     """Press a hotkey via osascript keystroke (works with AX trust)."""
-    # "fn+space" -> key code 49 (space) with fn modifier.
-    if hotkey == _FN_SPACE:
-        script = (
-            'tell application "System Events" to key code 49 using {control down, option down}'
-        )
-        # Fn is represented differently; try a plain key code 49 (space)
-        # which is the Siri/Spotlight summon in many configs.
-        subprocess.run(
-            ["osascript", "-e", 'tell application "System Events" to key code 49'],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+    if hotkey == _DOUBLE_CMD:
+        # Double-press Command (keycode 55) quickly -> summons Siri overlay.
+        for _ in range(2):
+            subprocess.run(
+                ["osascript", "-e", 'tell application "System Events" to key code 55'],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        return
+    # Fallback: plain space keycode.
+    subprocess.run(
+        ["osascript", "-e", 'tell application "System Events" to key code 49'],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
 
 
 class TypeToSiriBackend(base.BridgeBackend):
@@ -57,7 +62,7 @@ class TypeToSiriBackend(base.BridgeBackend):
     def __init__(
         self,
         *,
-        hotkey: str = _FN_SPACE,
+        hotkey: str = _DOUBLE_CMD,
         settle_kwargs: Optional[dict] = None,
         get_response_text: Optional[Callable[[], Optional[str]]] = None,
     ):
