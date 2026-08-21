@@ -107,7 +107,7 @@ Install the `siri` command onto your PATH from the official tap:
 
 ```bash
 brew tap Pasithea0/homebrew-siri-cli
-brew trust --formula pasithea0/siri-cli/siri-cli   # one-time (new Homebrew security check)
+brew trust --formula pasithea0/siri-cli   # one-time (new Homebrew security check)
 brew install siri-cli
 siri --version   # → siri, version X.Y.Z
 ```
