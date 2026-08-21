@@ -79,7 +79,10 @@ class SiriAiBackend(base.BridgeBackend):
         if self.foreground:
             self._activate()
 
-        pid = self._find_pid()
+        # Make sure the app is in a usable (windowed) state. macOS sometimes
+        # relaunches Siri AI windowless, where there is no composer and the AX
+        # tree is just the menu bar — queries fail. Reset until a window is up.
+        pid = self._ensure_windowed()
         if pid is None:
             raise base.SurfaceError("Siri AI app is not running")
 
@@ -87,11 +90,28 @@ class SiriAiBackend(base.BridgeBackend):
         try:
             return self._ask_once(query, pid, timeout_s, start)
         except base.CaptureError:
-            self._reset_app()
-            pid = self._find_pid()
+            pid = self._ensure_windowed()
             if pid is None:
                 raise base.SurfaceError("Siri AI app not available after reset")
             return self._ask_once(query, pid, timeout_s, start)
+
+    def _ensure_windowed(self) -> Optional[int]:
+        """Return a pid whose app has a real window; reset up to 3 times.
+
+        Siri AI can relaunch in a windowless state (no composer, menu-bar-only
+        AX tree). This keeps trying until a window exists or gives up.
+        """
+        for _ in range(3):
+            pid = self._find_pid()
+            if pid is None:
+                return None
+            if self._has_window(pid):
+                return pid
+            # Windowless — reset and try again.
+            self._reset_app()
+            time.sleep(1.5)
+        pid = self._find_pid()
+        return pid if pid is not None and self._has_window(pid) else None
 
     def _ask_once(self, query: str, pid: int, timeout_s: float, start: float) -> base.SiriResponse:
         """Run the query flow once against the given app instance."""
@@ -128,16 +148,16 @@ class SiriAiBackend(base.BridgeBackend):
             return None
 
     def _ensure_running(self) -> None:
-        """Launch the app if it isn't running, WITHOUT bringing it to front.
+        """Launch the app if it isn't running, with its window available.
 
-        Uses `open -gj` — the `-g` flag launches the app but does NOT make it
-        active, so it never steals focus from the user's frontmost window.
-        (`open -a` would front it on launch — the bug that made Siri appear
-        foreground when it had to be started.)
+        Uses plain `open -a`. (NOT `open -gj` — the `-g` flag suppresses the
+        window, leaving Siri windowless with no composer, so queries fail.
+        Plain `open -a` opens the window; launch does not itself steal focus
+        — verified: the frontmost app stays Terminal after launch.)
         """
         if self._find_pid() is None:
             subprocess.run(
-                ["open", "-gj", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
+                ["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
             )
             time.sleep(self.open_delay_s)
 
@@ -174,17 +194,24 @@ class SiriAiBackend(base.BridgeBackend):
         return self._find_composer(app) is not None
 
     def _reset_app(self) -> None:
-        """Quit and relaunch the Siri AI app to clear stuck state."""
+        """Quit and relaunch the Siri AI app to clear a stuck/windowless state."""
         subprocess.run(
             ["osascript", "-e", 'tell application "Siri AI" to quit'],
             capture_output=True, text=True, timeout=5,
         )
         time.sleep(2)
-        # Relaunch WITHOUT fronting (open -gj keeps focus with the user).
+        # Relaunch with `open -a` so a real window appears.
         subprocess.run(
-            ["open", "-gj", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
+            ["open", "-a", _SIRI_AI_APP], capture_output=True, text=True, timeout=5
         )
         time.sleep(self.open_delay_s)
+
+    def _has_window(self, pid: int) -> bool:
+        """True if the app has at least one AX window (i.e. is usable)."""
+        import ApplicationServices as a
+
+        app = a.AXUIElementCreateApplication(pid)
+        return len(self._windows(app)) > 0
 
     def _focus_composer(self) -> None:
         """Ensure the composer text field has keyboard focus.
