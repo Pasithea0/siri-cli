@@ -103,20 +103,17 @@ macOS 27.
 
 ### Homebrew (recommended)
 
-A Homebrew formula (`Formula/siri-cli.rb`) installs the `siri` command onto
-your PATH. Once the project has a GitHub release:
+Install the `siri` command onto your PATH from the official tap:
 
 ```bash
 brew tap Pasithea0/homebrew-siri-cli
-brew install Pasithea0/siri-cli/siri-cli
-siri --version   # → siri, version 0.1.0
+brew trust --formula pasithea0/siri-cli/siri-cli   # one-time (new Homebrew security check)
+brew install siri-cli
+siri --version   # → siri, version X.Y.Z
 ```
 
-Until the release tarball exists, build from a local checkout:
-
-```bash
-brew install --build-from-source --formula Formula/siri-cli.rb
-```
+> The `brew trust` step is a one-time grant required by recent Homebrew for
+> third-party taps. `brew install` will prompt for it if you skip it.
 
 ### From source
 
