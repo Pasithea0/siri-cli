@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Pasithea0/siri-cli/compare/v1.0.0...v1.0.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* Homebrew formula installs python deps via sdist resources ([a0a6e39](https://github.com/Pasithea0/siri-cli/commit/a0a6e39c6fcf0e0ba24a5f49d87f63144517ad8d))
+
 # 1.0.0 (2026-08-21)
 
 
