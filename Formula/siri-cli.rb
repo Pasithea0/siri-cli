@@ -1,7 +1,7 @@
 # Homebrew formula for siri-cli.
 #
 # Install:
-#   brew tap Pasithea0/homebrew-siri-cli
+#   brew tap Pasithea0/tap
 #   brew install siri-cli
 #
 # This exposes the `siri` command on your PATH.

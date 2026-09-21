@@ -78,13 +78,13 @@ jobs:
 
       - name: Sync formula to Homebrew tap
         # Mirror the updated formula into the official tap repo so
-        # `brew tap Pasithea0/homebrew-siri-cli && brew install siri-cli`
+        # `brew tap Pasithea0/tap && brew install siri-cli`
         # pulls the release-correct formula.
         # Uses the GH_TOKEN PAT secret (fine-grained, has write access to BOTH
         # repos).
         if: ${{ ! inputs.dry_run }}
         env:
-          TAP_REPO: Pasithea0/homebrew-siri-cli
+          TAP_REPO: Pasithea0/homebrew-tap
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           set -e

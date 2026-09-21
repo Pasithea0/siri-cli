@@ -12,7 +12,7 @@ metadata:
         - siri
     install:
       - kind: brew
-        tap: Pasithea0/homebrew-siri-cli
+        tap: Pasithea0/tap
         formula: siri-cli
         bins: [siri]
   hermes:
@@ -30,11 +30,11 @@ Reach for this skill whenever the user asks you to access or act on their macOS 
 
 ## Install / verify
 
-The dependency is the `siri-cli` Homebrew formula (official tap `Pasithea0/homebrew-siri-cli`):
+The dependency is the `siri-cli` Homebrew formula (official tap `Pasithea0/tap`):
 
 ```bash
-brew tap Pasithea0/homebrew-siri-cli
-brew trust --formula pasithea0/siri-cli   # one-time (Homebrew 6+ third-party tap)
+brew tap Pasithea0/tap
+brew trust --formula pasithea0/tap/siri-cli   # one-time (Homebrew 6+ third-party tap)
 brew install siri-cli
 siri --version            # e.g. "siri, version 1.1.0"
 siri status               # health check — all lines should read OK

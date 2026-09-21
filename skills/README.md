@@ -16,8 +16,8 @@ formula.
 The only real dependency is the `siri` command itself:
 
 ```bash
-brew tap Pasithea0/homebrew-siri-cli
-brew trust --formula pasithea0/siri-cli   # one-time (Homebrew 6+ third-party tap)
+brew tap Pasithea0/tap
+brew trust --formula pasithea0/tap/siri-cli   # one-time (Homebrew 6+ third-party tap)
 brew install siri-cli
 siri status                                # all lines OK?
 ```
