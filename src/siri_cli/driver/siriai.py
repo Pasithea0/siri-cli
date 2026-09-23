@@ -20,6 +20,7 @@ want Siri to steal the front (not the default).
 
 from __future__ import annotations
 
+import re
 import subprocess
 import time
 from typing import Optional
@@ -31,6 +32,12 @@ _SIRI_AI_APP = "/System/Applications/Siri AI.app"
 _SIRI_AI_APPNAME = "Siri AI"
 _SIRI_AI_BUNDLE = "com.apple.campo"
 _SIRI_AI_PID_CMD = ["pgrep", "-f", "Siri AI.app/Contents/MacOS/Siri AI"]
+
+# Transient progress lines Siri AI shows while a tool call runs, e.g.
+# "Searching events", "Searching emails". Can hold for several seconds.
+_STATUS_LINE_RE = re.compile(
+    r"^(Searching|Looking|Checking|Finding|Getting|Thinking|Working)\b[^.?!]{0,40}$"
+)
 
 
 class SiriAiBackend(base.BridgeBackend):
@@ -122,7 +129,7 @@ class SiriAiBackend(base.BridgeBackend):
 
         # Wait for the response to settle.
         deadline = time.monotonic() + timeout_s
-        text = self._wait_for_response(pid, deadline)
+        text = self._wait_for_response(pid, deadline, query)
 
         elapsed_ms = int((time.monotonic() - start) * 1000)
         if not text:
@@ -266,7 +273,7 @@ class SiriAiBackend(base.BridgeBackend):
             capture_output=True, text=True, timeout=5,
         )  # Return
 
-    def _wait_for_response(self, pid: int, deadline: float) -> Optional[str]:
+    def _wait_for_response(self, pid: int, deadline: float, query: str = "") -> Optional[str]:
         """Poll the AX tree until the response stops changing; return the text.
 
         Returns None if no response rendered before the deadline (the app may
@@ -276,10 +283,18 @@ class SiriAiBackend(base.BridgeBackend):
         stable = 0
         while time.monotonic() < deadline:
             texts = self._extract_response_text(pid)
+            # Ignore the echoed query alone -- Siri shows it for a second or
+            # two before any status line or answer appears.
+            if texts and texts.strip() == query.strip():
+                texts = None
+            # Likewise a trailing progress line means the answer hasn't
+            # started yet, however long it holds.
+            if texts and _STATUS_LINE_RE.match(texts.strip().splitlines()[-1]):
+                texts = None
             if texts:
                 if texts == last:
                     stable += 1
-                    if stable >= 2:
+                    if stable >= 4:
                         return texts  # settled
                 else:
                     stable = 0
