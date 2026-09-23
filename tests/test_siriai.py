@@ -79,3 +79,18 @@ def test_ask_raises_permissions_without_accessibility(monkeypatch):
     monkeypatch.setattr(config, "check", lambda: _healthy(accessibility=False))
     with pytest.raises(PermissionsError):
         backend.ask("hi")
+
+
+def test_wait_for_response_skips_bare_query_echo(monkeypatch):
+    # Siri AI shows only the echoed query for ~2 s, then a status line,
+    # then the answer. The echo alone must not count as a settled response.
+    backend = siriai.SiriAiBackend()
+    frames = iter(
+        ["what's on my calendar"] * 8
+        + ["what's on my calendar\nSearching events"] * 2
+        + ["what's on my calendar\nYou have one event tomorrow."] * 10
+    )
+    monkeypatch.setattr(backend, "_extract_response_text", lambda pid: next(frames))
+    monkeypatch.setattr(siriai.time, "sleep", lambda s: None)
+    out = backend._wait_for_response(1, siriai.time.monotonic() + 5, "what's on my calendar")
+    assert out == "what's on my calendar\nYou have one event tomorrow."
